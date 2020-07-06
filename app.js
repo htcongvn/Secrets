@@ -3,6 +3,7 @@ const express = require("express");
 const bodyParser = require("body-parser");
 const ejs = require("ejs");
 const mongoose = require("mongoose");
+const encrypt = require("mongoose-encryption");
 
 const app = express();
 
@@ -36,6 +37,9 @@ const userSchema = new mongoose.Schema({
   password: String
 });
 
+const secret = "Thisisourlittlesecret.";
+userSchema.plugin(encrypt, { secret: secret, encryptedFields: ['password'] });
+
 const User = mongoose.model('User', userSchema);
 
 ////////////// app
@@ -61,7 +65,7 @@ app.post("/register", async function(req,res) {
     try {
       const savedNewUser = await newUser.save();
       if (savedNewUser === newUser) {
-        console.log(savedNewUser);
+        // console.log(savedNewUser);
         res.render("secrets");
       }
     } catch (err) {
