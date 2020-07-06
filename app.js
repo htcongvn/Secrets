@@ -1,4 +1,5 @@
 //jshint esversion:6
+require('dotenv').config();
 const express = require("express");
 const bodyParser = require("body-parser");
 const ejs = require("ejs");
@@ -13,7 +14,7 @@ app.use(bodyParser.urlencoded({
   extended: true
 }));
 
-const uri = 'mongodb+srv://cong:cong@cluster0-vb5ud.mongodb.net/usersDB?retryWrites=true';
+const uri = 'mongodb+srv://' + process.env.MONGODB_USER + ':' + process.env.MONGODB_PW + '@cluster0-vb5ud.mongodb.net/usersDB?retryWrites=true';
 mongoose.connect(uri, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
@@ -38,7 +39,7 @@ const userSchema = new mongoose.Schema({
 });
 
 const secret = "Thisisourlittlesecret.";
-userSchema.plugin(encrypt, { secret: secret, encryptedFields: ['password'] });
+userSchema.plugin(encrypt, { secret: process.env.SECRET, encryptedFields: ['password'] });
 
 const User = mongoose.model('User', userSchema);
 
