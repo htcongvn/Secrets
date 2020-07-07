@@ -4,7 +4,8 @@ const express = require("express");
 const bodyParser = require("body-parser");
 const ejs = require("ejs");
 const mongoose = require("mongoose");
-const encrypt = require("mongoose-encryption");
+
+const crypto = require('crypto');
 
 const app = express();
 
@@ -38,8 +39,6 @@ const userSchema = new mongoose.Schema({
   password: String
 });
 
-userSchema.plugin(encrypt, { secret: process.env.SECRET, encryptedFields: ['password'] });
-
 const User = mongoose.model('User', userSchema);
 
 ////////////// app
@@ -56,10 +55,15 @@ app.get("/register", function(req,res) {
 });
 
 app.post("/register", async function(req,res) {
+
+  const hashedPassword = crypto.createHmac('sha512', process.env.SECRET)
+                      .update(req.body.password)
+                      .digest('hex');
+
   if (req.body.username.length > 0) {
     const newUser = new User({
       email: req.body.username,
-      password: req.body.password
+      password: hashedPassword
     });
 
     try {
@@ -83,14 +87,17 @@ app.post("/register", async function(req,res) {
 
 app.post("/login", function(req, res) {
   const username = req.body.username;
-  const password = req.body.password;
+
+  const hashedPassword = crypto.createHmac('sha512', process.env.SECRET)
+                      .update(req.body.password)
+                      .digest('hex');
 
   User.findOne({ email: username }, function(err, foundUser) {
     if (err) {
       console.log(err);
     } else {
       if (foundUser) {
-        if (foundUser.password === password) {
+        if (foundUser.password === hashedPassword) {
           res.render("secrets");
         } else {
           res.send("Password does not match!");
