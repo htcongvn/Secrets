@@ -4,8 +4,9 @@ const express = require("express");
 const bodyParser = require("body-parser");
 const ejs = require("ejs");
 const mongoose = require("mongoose");
+const bcrypt = require('bcrypt');
+const saltRounds = 10;
 
-const crypto = require('crypto');
 
 const app = express();
 
@@ -54,54 +55,49 @@ app.get("/register", function(req,res) {
   res.render("register");
 });
 
-app.post("/register", async function(req,res) {
+app.post("/register", function(req,res) {
 
-  const hashedPassword = crypto.createHmac('sha512', process.env.SECRET)
-                      .update(req.body.password)
-                      .digest('hex');
+  bcrypt.hash(req.body.password, saltRounds, async function(err, hashedPassword) {
+    if (req.body.username.length > 0) {
+      const newUser = new User({
+        email: req.body.username,
+        password: hashedPassword
+      });
 
-  if (req.body.username.length > 0) {
-    const newUser = new User({
-      email: req.body.username,
-      password: hashedPassword
-    });
-
-    try {
-      const savedNewUser = await newUser.save();
-      if (savedNewUser === newUser) {
-        // console.log(savedNewUser);
-        res.render("secrets");
+      try {
+        const savedNewUser = await newUser.save();
+        if (savedNewUser === newUser) {
+          res.render("secrets");
+        }
+      } catch (err) {
+        if (err.code === 11000) {
+          res.send("Email " + err.keyValue["email"] + " already existed!");
+        } else {
+          res.send(err);
+        }
       }
-    } catch (err) {
-      if (err.code === 11000) {
-        res.send("Email " + err.keyValue["email"] + " already existed!");
-      } else {
-        res.send(err);
-      }
-
+    } else {
+      res.send("Email is not specified!");
     }
-  } else {
-    res.send("Email is not specified!");
-  }
+  });
+
 });
 
 app.post("/login", function(req, res) {
   const username = req.body.username;
-
-  const hashedPassword = crypto.createHmac('sha512', process.env.SECRET)
-                      .update(req.body.password)
-                      .digest('hex');
 
   User.findOne({ email: username }, function(err, foundUser) {
     if (err) {
       console.log(err);
     } else {
       if (foundUser) {
-        if (foundUser.password === hashedPassword) {
-          res.render("secrets");
-        } else {
-          res.send("Password does not match!");
-        }
+        bcrypt.compare(req.body.password, foundUser.password, function(err, result) {
+          if (result === true) {
+            res.render("secrets");
+          } else {
+            res.send("Password does not match!");
+          }
+        });
       } else {
         res.send("Username " + username + " does not exist!");
       }
